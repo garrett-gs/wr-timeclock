@@ -441,6 +441,7 @@ function doLogout() {
   localStorage.removeItem('wr_tc_user')
   localStorage.removeItem('wr_clock_in')
   localStorage.removeItem('wr_clock_out')
+  localStorage.removeItem('wr_clock_in_submit')
   session = null; userProfile = null; selectedUser = null
   clockInTime = null; clockOutTime = null
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null }
@@ -487,7 +488,8 @@ function toggleClock() {
     document.getElementById('submit-btn').style.display = 'block'
     updateSubmitBtn()
 
-    // Reset clock in for potential new session
+    // Save clockInTime for submit, then reset for potential new session
+    localStorage.setItem('wr_clock_in_submit', clockInTime.toISOString())
     clockInTime = null
   }
 }
@@ -519,19 +521,22 @@ async function submitTime() {
   const btn = document.getElementById('submit-btn')
   btn.textContent = 'Submitting…'; btn.disabled = true
 
-  const hours = Math.round((clockOutTime - clockInTime) / 3600000 * 100) / 100
+  const savedClockIn = localStorage.getItem('wr_clock_in_submit')
+  const effectiveClockIn = clockInTime || (savedClockIn ? new Date(savedClockIn) : null)
+  if (!effectiveClockIn) { alert('Clock-in time missing. Please clock in again.'); btn.textContent = 'Submit Time Entry'; btn.disabled = false; return }
+  const hours = Math.round((clockOutTime - effectiveClockIn) / 3600000 * 100) / 100
   const rate = userProfile.hourly_rate
   const cost = Math.round(hours * rate * 100) / 100
   const notes = document.getElementById('work-notes').value.trim()
   const project = projects.find(p => p.id === projectId)
   const logEntry = {
-    date: clockInTime.toISOString().split('T')[0],
+    date: effectiveClockIn.toISOString().split('T')[0],
     hours,
     rate,
     cost,
     notes,
     user: userProfile.name,
-    clock_in: clockInTime.toISOString(),
+    clock_in: effectiveClockIn.toISOString(),
     clock_out: clockOutTime.toISOString(),
   }
 
@@ -562,7 +567,7 @@ async function submitTime() {
         user_email: userProfile.email,
         custom_work_id: projectId,
         project_name: project?.project_name || project?.client_name,
-        clock_in: clockInTime.toISOString(),
+        clock_in: effectiveClockIn.toISOString(),
         clock_out: clockOutTime.toISOString(),
         hours,
         rate,
@@ -574,6 +579,7 @@ async function submitTime() {
 
     localStorage.removeItem('wr_clock_in')
     localStorage.removeItem('wr_clock_out')
+    localStorage.removeItem('wr_clock_in_submit')
     const projectLabel = project?.project_name || project?.client_name || 'project'
     document.getElementById('success-sub').textContent =
       `${hours.toFixed(2)} hrs × $${rate}/hr = $${cost.toFixed(2)} added to "${projectLabel}"`
