@@ -342,10 +342,7 @@ async function loadUsers() {
       const initials = u.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
       return `<button class="user-btn" onclick="selectUser(${i})">
         <div class="user-avatar">${initials}</div>
-        <div>
-          <div>${u.name}</div>
-          <div style="font-size:11px;font-weight:400;color:var(--grey);margin-top:2px">$${u.hourly_rate || 60}/hr</div>
-        </div>
+        <div>${u.name}</div>
       </button>`
     }).join('')
   } catch(e) {
