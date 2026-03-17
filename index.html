@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>WR Time Clock</title>
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary: #6b6b3a;
+      --primary-dark: #4a4a28;
+      --cream: #faf8f3;
+      --brown: #3d2b1a;
+      --grey: #8a8a78;
+      --border: #e4e1d6;
+      --white: #ffffff;
+      --green: #22c55e;
+      --red: #ef4444;
+      --blue: #4d9fff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0 }
+    body {
+      font-family: 'Urbanist', sans-serif;
+      background: var(--cream);
+      color: var(--brown);
+      min-height: 100vh;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .screen { display: none; min-height: 100vh; flex-direction: column }
+    .screen.active { display: flex }
+
+    /* ── LOGIN ── */
+    .login-wrap {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 40px 32px;
+    }
+    .login-logo {
+      font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 4px;
+      text-transform: uppercase; color: var(--grey); margin-bottom: 48px;
+    }
+    .login-title {
+      font-size: 28px; font-weight: 700; color: var(--brown);
+      margin-bottom: 8px; text-align: center;
+    }
+    .login-sub { font-size: 14px; color: var(--grey); margin-bottom: 40px; text-align: center }
+    .form-group { width: 100%; margin-bottom: 16px }
+    .form-label { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--grey); display: block; margin-bottom: 6px }
+    .input {
+      width: 100%; padding: 14px 16px; font-family: 'Urbanist', sans-serif;
+      font-size: 15px; border: 1.5px solid var(--border); background: var(--white);
+      color: var(--brown); outline: none; border-radius: 8px; transition: border-color 0.2s;
+    }
+    .input:focus { border-color: var(--primary) }
+    .btn {
+      width: 100%; padding: 16px; font-family: 'Urbanist', sans-serif;
+      font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+      border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: #fff }
+    .btn-primary:hover { background: var(--primary-dark) }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed }
+    .btn-ghost {
+      background: transparent; color: var(--grey);
+      border: 1.5px solid var(--border); margin-top: 10px;
+    }
+    .error-msg { font-size: 13px; color: var(--red); margin-bottom: 14px; text-align: center }
+
+    /* ── CLOCK ── */
+    .clock-header {
+      background: var(--primary); padding: 20px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .clock-header-name { font-size: 13px; font-weight: 600; color: #fff }
+    .clock-header-rate { font-size: 11px; color: rgba(255,255,255,0.5); font-family: 'DM Mono', monospace }
+    .logout-btn {
+      background: none; border: 1px solid rgba(255,255,255,0.25);
+      color: rgba(255,255,255,0.6); padding: 5px 12px; border-radius: 5px;
+      font-size: 11px; cursor: pointer; font-family: 'Urbanist', sans-serif;
+    }
+
+    .clock-body { flex: 1; padding: 24px; display: flex; flex-direction: column; gap: 20px }
+
+    /* Timer display */
+    .timer-card {
+      background: var(--white); border: 1.5px solid var(--border); border-radius: 12px;
+      padding: 28px 24px; text-align: center;
+    }
+    .timer-status {
+      font-size: 10px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .timer-status.idle { color: var(--grey) }
+    .timer-status.running { color: var(--green) }
+    .timer-display {
+      font-family: 'DM Mono', monospace; font-size: 52px; font-weight: 500;
+      color: var(--brown); letter-spacing: -1px; margin-bottom: 8px; line-height: 1;
+    }
+    .timer-date { font-size: 12px; color: var(--grey); margin-bottom: 24px; font-family: 'DM Mono', monospace }
+
+    .clock-btn {
+      width: 100%; padding: 18px; font-family: 'Urbanist', sans-serif;
+      font-size: 14px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+      border: none; border-radius: 10px; cursor: pointer; transition: all 0.2s;
+    }
+    .clock-btn.clock-in { background: var(--green); color: #fff }
+    .clock-btn.clock-in:hover { background: #16a34a }
+    .clock-btn.clock-out { background: var(--red); color: #fff }
+    .clock-btn.clock-out:hover { background: #dc2626 }
+
+    /* Project picker */
+    .section-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--grey); margin-bottom: 10px;
+    }
+    .project-select {
+      width: 100%; padding: 14px 16px; font-family: 'Urbanist', sans-serif;
+      font-size: 14px; border: 1.5px solid var(--border); background: var(--white);
+      color: var(--brown); outline: none; border-radius: 8px;
+      appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8a78' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 14px center;
+      padding-right: 40px;
+    }
+    .project-select:focus { border-color: var(--primary) }
+    .project-select.required-highlight { border-color: var(--red) }
+
+    textarea.input { min-height: 80px; resize: none; line-height: 1.5 }
+
+    /* Summary card */
+    .summary-card {
+      background: var(--primary-dark); border-radius: 12px; padding: 20px 24px; color: #fff;
+    }
+    .summary-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px }
+    .summary-row:last-child { margin-bottom: 0; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; margin-top: 4px }
+    .summary-label { font-size: 11px; color: rgba(255,255,255,0.5); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 1px }
+    .summary-val { font-size: 14px; font-weight: 600; font-family: 'DM Mono', monospace }
+    .summary-total { font-size: 22px; font-weight: 700; color: #c8f060 }
+
+    /* Submit */
+    .submit-btn {
+      width: 100%; padding: 18px; background: var(--primary); color: #fff;
+      font-family: 'Urbanist', sans-serif; font-size: 13px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase; border: none; border-radius: 10px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .submit-btn:hover { background: var(--primary-dark) }
+    .submit-btn:disabled { opacity: 0.4; cursor: not-allowed }
+
+    /* Success */
+    .success-screen {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 40px 32px; text-align: center;
+    }
+    .success-icon { font-size: 64px; margin-bottom: 24px }
+    .success-title { font-size: 26px; font-weight: 700; margin-bottom: 8px }
+    .success-sub { font-size: 14px; color: var(--grey); margin-bottom: 40px; line-height: 1.6 }
+
+    .required-note { font-size: 11px; color: var(--red); margin-top: 6px }
+    .clocked-in-badge {
+      background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3);
+      color: var(--green); border-radius: 6px; padding: 6px 12px;
+      font-size: 12px; font-family: 'DM Mono', monospace; text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="screen active" id="screen-login">
+  <div class="login-wrap">
+    <div class="login-logo">Wallflower Relic</div>
+    <div class="login-title">Time Clock</div>
+    <div class="login-sub">Sign in with your Nexus account</div>
+    <div id="login-error" class="error-msg" style="display:none"></div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="input" type="email" id="login-email" placeholder="you@wallflowerrelic.com" autocomplete="email"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <button class="btn btn-primary" id="login-btn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<!-- CLOCK SCREEN -->
+<div class="screen" id="screen-clock">
+  <div class="clock-header">
+    <div>
+      <div class="clock-header-name" id="header-name">—</div>
+      <div class="clock-header-rate" id="header-rate">$0/hr</div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+  </div>
+
+  <div class="clock-body">
+
+    <!-- Timer -->
+    <div class="timer-card">
+      <div class="timer-status idle" id="timer-status">Ready to Clock In</div>
+      <div class="timer-display" id="timer-display">00:00:00</div>
+      <div class="timer-date" id="timer-date">—</div>
+      <button class="clock-btn clock-in" id="clock-btn" onclick="toggleClock()">Clock In</button>
+    </div>
+
+    <!-- Project -->
+    <div id="project-section">
+      <div class="section-label">Project *</div>
+      <select class="project-select" id="project-select">
+        <option value="">Select a project…</option>
+      </select>
+      <div class="required-note" id="project-required" style="display:none">Project is required before submitting</div>
+    </div>
+
+    <!-- Notes -->
+    <div>
+      <div class="section-label">Notes</div>
+      <textarea class="input" id="work-notes" placeholder="What did you work on today?"></textarea>
+    </div>
+
+    <!-- Summary (shown after clock out) -->
+    <div id="summary-section" style="display:none">
+      <div class="section-label">Session Summary</div>
+      <div class="summary-card">
+        <div class="summary-row">
+          <span class="summary-label">Clocked In</span>
+          <span class="summary-val" id="summary-in">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Clocked Out</span>
+          <span class="summary-val" id="summary-out">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Hours</span>
+          <span class="summary-val" id="summary-hours">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Total</span>
+          <span class="summary-total" id="summary-total">$0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <button class="submit-btn" id="submit-btn" onclick="submitTime()" disabled style="display:none">
+      Submit Time Entry
+    </button>
+
+  </div>
+</div>
+
+<!-- SUCCESS SCREEN -->
+<div class="screen" id="screen-success">
+  <div class="success-screen">
+    <div class="success-icon">✅</div>
+    <div class="success-title">Time Submitted!</div>
+    <div class="success-sub" id="success-sub">Your time has been logged to the project.</div>
+    <button class="btn btn-primary" onclick="resetForNewEntry()" style="width:100%;max-width:320px">Clock In Again</button>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://mgwvpkezvuswvbkzwysx.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1nd3Zwa2V6dnVzd3Zia3p3eXN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxODgyMjksImV4cCI6MjA4ODc2NDIyOX0.Tql9O5el3gr-xusH-icGfQEg0cCHHRUOdyvAq_DHlfs'
+
+let session = null
+let userProfile = null  // { name, email, hourly_rate }
+let clockInTime = null
+let clockOutTime = null
+let timerInterval = null
+let projects = []
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function api(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, ...options.headers }
+  if (session?.access_token) headers['Authorization'] = 'Bearer ' + session.access_token
+  const res = await fetch(SUPABASE_URL + path, { ...options, headers })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error_description || data.message || 'Request failed')
+  return data
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim()
+  const password = document.getElementById('login-password').value
+  const btn = document.getElementById('login-btn')
+  const errEl = document.getElementById('login-error')
+  errEl.style.display = 'none'
+  if (!email || !password) { showError('Please enter your email and password.'); return }
+  btn.textContent = 'Signing in…'; btn.disabled = true
+  try {
+    const data = await api('/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    })
+    session = data
+    await loadUserProfile(email)
+    showScreen('clock')
+  } catch(e) {
+    showError(e.message || 'Sign in failed. Check your credentials.')
+    btn.textContent = 'Sign In'; btn.disabled = false
+  }
+}
+
+async function loadUserProfile(email) {
+  // Load settings to find user's hourly rate
+  const data = await api('/rest/v1/settings?select=users&limit=1')
+  const settings = data[0]
+  const users = settings?.users || []
+  const user = users.find(u => u.email?.toLowerCase() === email.toLowerCase())
+  userProfile = {
+    name: user?.name || email.split('@')[0],
+    email,
+    hourly_rate: parseFloat(user?.hourly_rate) || 60
+  }
+  document.getElementById('header-name').textContent = userProfile.name
+  document.getElementById('header-rate').textContent = `$${userProfile.hourly_rate}/hr`
+
+  // Load active custom work projects
+  const cwData = await api('/rest/v1/custom_work?select=id,project_name,client_name,status&status=neq.complete&order=created_at.desc')
+  projects = cwData || []
+  const sel = document.getElementById('project-select')
+  sel.innerHTML = '<option value="">Select a project…</option>'
+  projects.forEach(p => {
+    const opt = document.createElement('option')
+    opt.value = p.id
+    opt.textContent = (p.project_name || p.client_name) + (p.client_name && p.project_name ? ` — ${p.client_name}` : '')
+    sel.appendChild(opt)
+  })
+}
+
+function doLogout() {
+  session = null; userProfile = null; clockInTime = null; clockOutTime = null
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null }
+  document.getElementById('login-email').value = ''
+  document.getElementById('login-password').value = ''
+  resetUI()
+  showScreen('login')
+}
+
+// ── Clock ─────────────────────────────────────────────────────────────────────
+function toggleClock() {
+  if (!clockInTime) {
+    // Clock in
+    clockInTime = new Date()
+    clockOutTime = null
+    document.getElementById('clock-btn').textContent = 'Clock Out'
+    document.getElementById('clock-btn').className = 'clock-btn clock-out'
+    document.getElementById('timer-status').textContent = 'Clocked In'
+    document.getElementById('timer-status').className = 'timer-status running'
+    document.getElementById('timer-date').textContent = clockInTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    document.getElementById('summary-section').style.display = 'none'
+    document.getElementById('submit-btn').style.display = 'none'
+    timerInterval = setInterval(updateTimer, 1000)
+  } else {
+    // Clock out
+    clockOutTime = new Date()
+    clearInterval(timerInterval); timerInterval = null
+    document.getElementById('clock-btn').textContent = 'Clock In Again'
+    document.getElementById('clock-btn').className = 'clock-btn clock-in'
+    document.getElementById('timer-status').textContent = 'Session Complete'
+    document.getElementById('timer-status').className = 'timer-status idle'
+
+    // Show summary
+    const hours = (clockOutTime - clockInTime) / 3600000
+    const cost = hours * userProfile.hourly_rate
+    document.getElementById('summary-in').textContent = clockInTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    document.getElementById('summary-out').textContent = clockOutTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    document.getElementById('summary-hours').textContent = hours.toFixed(2) + ' hrs'
+    document.getElementById('summary-total').textContent = '$' + cost.toFixed(2)
+    document.getElementById('summary-section').style.display = 'block'
+    document.getElementById('submit-btn').style.display = 'block'
+    updateSubmitBtn()
+
+    // Reset clock in for potential new session
+    clockInTime = null
+  }
+}
+
+function updateTimer() {
+  if (!clockInTime) return
+  const elapsed = Date.now() - clockInTime.getTime()
+  const h = Math.floor(elapsed / 3600000)
+  const m = Math.floor((elapsed % 3600000) / 60000)
+  const s = Math.floor((elapsed % 60000) / 1000)
+  document.getElementById('timer-display').textContent =
+    String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0')
+}
+
+function updateSubmitBtn() {
+  const projectId = document.getElementById('project-select').value
+  const hasClockedOut = !!clockOutTime
+  document.getElementById('submit-btn').disabled = !hasClockedOut || !projectId
+  document.getElementById('project-required').style.display = hasClockedOut && !projectId ? 'block' : 'none'
+}
+
+document.getElementById('project-select').addEventListener('change', updateSubmitBtn)
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+async function submitTime() {
+  const projectId = document.getElementById('project-select').value
+  if (!projectId || !clockOutTime) return
+
+  const btn = document.getElementById('submit-btn')
+  btn.textContent = 'Submitting…'; btn.disabled = true
+
+  const hours = Math.round((clockOutTime - clockInTime) / 3600000 * 100) / 100
+  const rate = userProfile.hourly_rate
+  const cost = Math.round(hours * rate * 100) / 100
+  const notes = document.getElementById('work-notes').value.trim()
+  const project = projects.find(p => p.id === projectId)
+  const logEntry = {
+    date: clockInTime.toISOString().split('T')[0],
+    hours,
+    rate,
+    cost,
+    notes,
+    user: userProfile.name,
+    clock_in: clockInTime.toISOString(),
+    clock_out: clockOutTime.toISOString(),
+  }
+
+  try {
+    // 1. Get current labor_log
+    const cwData = await api(`/rest/v1/custom_work?id=eq.${projectId}&select=labor_log,actual_cost`)
+    const existing = cwData[0]
+    const currentLog = existing?.labor_log || []
+    const currentCost = parseFloat(existing?.actual_cost) || 0
+    const newCost = Math.round((currentCost + cost) * 100) / 100
+
+    // 2. Update custom_work labor_log and actual_cost
+    await api(`/rest/v1/custom_work?id=eq.${projectId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        labor_log: [...currentLog, logEntry],
+        actual_cost: newCost,
+        updated_at: new Date().toISOString()
+      })
+    })
+
+    // 3. Save to time_logs table
+    await api('/rest/v1/time_logs', {
+      method: 'POST',
+      headers: { 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        user_name: userProfile.name,
+        user_email: userProfile.email,
+        custom_work_id: projectId,
+        project_name: project?.project_name || project?.client_name,
+        clock_in: clockInTime.toISOString(),
+        clock_out: clockOutTime.toISOString(),
+        hours,
+        rate,
+        cost,
+        notes,
+        pushed_to_project: true,
+      })
+    })
+
+    const projectLabel = project?.project_name || project?.client_name || 'project'
+    document.getElementById('success-sub').textContent =
+      `${hours.toFixed(2)} hrs × $${rate}/hr = $${cost.toFixed(2)} added to "${projectLabel}"`
+    showScreen('success')
+  } catch(e) {
+    alert('Error submitting: ' + e.message)
+    btn.textContent = 'Submit Time Entry'; btn.disabled = false
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
+  document.getElementById('screen-' + name).classList.add('active')
+}
+
+function showError(msg) {
+  const el = document.getElementById('login-error')
+  el.textContent = msg; el.style.display = 'block'
+}
+
+function resetUI() {
+  document.getElementById('timer-display').textContent = '00:00:00'
+  document.getElementById('timer-status').textContent = 'Ready to Clock In'
+  document.getElementById('timer-status').className = 'timer-status idle'
+  document.getElementById('timer-date').textContent = '—'
+  document.getElementById('clock-btn').textContent = 'Clock In'
+  document.getElementById('clock-btn').className = 'clock-btn clock-in'
+  document.getElementById('summary-section').style.display = 'none'
+  document.getElementById('submit-btn').style.display = 'none'
+  document.getElementById('work-notes').value = ''
+  document.getElementById('project-select').value = ''
+}
+
+function resetForNewEntry() {
+  clockInTime = null; clockOutTime = null
+  resetUI()
+  showScreen('clock')
+}
+
+// Check for existing session on load
+;(async () => {
+  const stored = localStorage.getItem('wr_tc_session')
+  if (stored) {
+    try {
+      session = JSON.parse(stored)
+      // Verify token still valid
+      const { user } = await api('/auth/v1/user')
+      if (user?.email) {
+        await loadUserProfile(user.email)
+        showScreen('clock')
+        return
+      }
+    } catch(e) { localStorage.removeItem('wr_tc_session') }
+  }
+})()
+
+// Persist session
+const origDoLogin = doLogin
+</script>
+</body>
+</html>
