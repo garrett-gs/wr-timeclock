@@ -297,6 +297,7 @@ async function doLogin() {
       body: JSON.stringify({ email, password })
     })
     session = data
+    localStorage.setItem('wr_tc_session', JSON.stringify(data))
     await loadUserProfile(email)
     showScreen('clock')
   } catch(e) {
@@ -333,6 +334,7 @@ async function loadUserProfile(email) {
 }
 
 function doLogout() {
+  localStorage.removeItem('wr_tc_session')
   session = null; userProfile = null; clockInTime = null; clockOutTime = null
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null }
   document.getElementById('login-email').value = ''
